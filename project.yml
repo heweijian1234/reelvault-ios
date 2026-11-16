@@ -1,0 +1,52 @@
+name: ReelVault
+options:
+  bundleIdPrefix: com.zeronelabs
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    DEVELOPMENT_TEAM: "FZYVPK6336"
+    CODE_SIGN_STYLE: Automatic
+
+targets:
+  ReelVault:
+    type: application
+    platform: iOS
+    sources:
+      - path: ReelVault
+      - path: Shared
+    info:
+      path: ReelVault/Info.plist
+      properties:
+        CFBundleDisplayName: ReelVault
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        UILaunchScreen:
+          UIColorName: ""
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        ITSAppUsesNonExemptEncryption: false
+        NSCameraUsageDescription: ReelVault uses the camera to photograph your catches for species identification and your collection.
+        NSLocationWhenInUseUsageDescription: ReelVault can attach a fishing spot to your catch. Location is off by default and never shared.
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.zeronelabs.reelvault
+        TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+
+schemes:
+  ReelVault:
+    build:
+      targets:
+        ReelVault: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+    archive:
+      config: Release
