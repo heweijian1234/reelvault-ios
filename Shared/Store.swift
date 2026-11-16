@@ -72,16 +72,19 @@ final class Store: ObservableObject {
     var litSpecies: Set<String> { Set(collection.map(\.speciesName)) }
 
     func logCatch(speciesName: String, identifiedByAI: Bool, released: Bool = true, lengthCm: Double? = nil) {
-        catches.append(CatchRecord(speciesName: speciesName, identifiedByAI: identifiedByAI, released: released, lengthCm: lengthCm))
-        if let entry = collection.first(where: { $0.speciesName == speciesName }) {
-            entry.timesCaught += 1
-            if let l = lengthCm, (entry.personalBestCm == nil || l > entry.personalBestCm!) {
-                entry.personalBestCm = l
-                entry.pbDate = Date()
+        var record = CatchRecord(speciesName: speciesName, identifiedByAI: identifiedByAI)
+        record.released = released
+        record.lengthCm = lengthCm
+        catches.append(record)
+        if let idx = collection.firstIndex(where: { $0.speciesName == speciesName }) {
+            collection[idx].timesCaught += 1
+            if let l = lengthCm, (collection[idx].personalBestCm == nil || l > collection[idx].personalBestCm!) {
+                collection[idx].personalBestCm = l
+                collection[idx].pbDate = Date()
             }
         } else {
             let rarity = SpeciesDatabase.seed.first(where: { $0.name == speciesName })?.rarity ?? "common"
-            var e = CollectionEntry(speciesName: speciesName, timesCaught: 1, rarity: rarity, personalBestCm: lengthCm, pbDate: lengthCm != nil ? Date() : nil)
+            let e = CollectionEntry(speciesName: speciesName, timesCaught: 1, rarity: rarity, personalBestCm: lengthCm, pbDate: lengthCm != nil ? Date() : nil)
             collection.append(e)
         }
     }
