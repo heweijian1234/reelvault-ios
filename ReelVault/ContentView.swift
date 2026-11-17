@@ -69,7 +69,7 @@ struct RecordView: View {
                 }
                 SpeciesPicker(picked: $pickedSpecies)
                 // 安全层（免费全量）+ 习性摘要：选中即显示
-                if let info = SpeciesDatabase.info(for: pickedSpecies) {
+                if let info = Store.info(for: pickedSpecies) {
                     VStack(alignment: .leading, spacing: 4) {
                         SafetyBadge(level: info.edible, note: info.note)
                         Text("\(info.habitat) · \(info.season)")
@@ -82,7 +82,7 @@ struct RecordView: View {
                 Button {
                     guard !pickedSpecies.isEmpty else { return }
                     let isNew = !store.litSpecies.contains(pickedSpecies)
-                    let zh = SpeciesDatabase.info(for: pickedSpecies)?.nameZh ?? pickedSpecies
+                    let zh = Store.info(for: pickedSpecies)?.nameZh ?? pickedSpecies
                     store.logCatch(speciesName: pickedSpecies, identifiedByAI: false,
                                    weather: weather.autoWeatherEnabled ? weather.last : nil)
                     if isNew {
@@ -119,7 +119,7 @@ struct RecordView: View {
                     ForEach(store.catches.suffix(30).reversed(), id: \.id) { c in
                         VStack(alignment: .leading, spacing: 2) {
                             HStack {
-                                Text(SpeciesDatabase.info(for: c.speciesName)?.nameZh ?? c.speciesName)
+                                Text(Store.info(for: c.speciesName)?.nameZh ?? c.speciesName)
                                 Spacer()
                                 Text(c.date.formatted(.dateTime.month().day().hour().minute()))
                                     .font(.caption).foregroundStyle(.secondary)
@@ -163,7 +163,7 @@ struct SpeciesPicker: View {
                 if picked.isEmpty {
                     Text("选择鱼种…").foregroundStyle(.secondary)
                 } else {
-                    Label(SpeciesDatabase.info(for: picked)?.nameZh ?? picked, systemImage: "fish")
+                    Label(Store.info(for: picked)?.nameZh ?? picked, systemImage: "fish")
                         .foregroundStyle(.primary)
                 }
                 Spacer()
