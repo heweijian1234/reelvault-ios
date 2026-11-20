@@ -26,6 +26,7 @@ struct RecordView: View {
     @State private var pickedSpecies: String = ""
     @State private var justCaught: String?
     @State private var showNewbieCard: Bool = !UserDefaults.standard.bool(forKey: "rv.onboarded")
+    @State private var showingPhotoCatch = false
 
     var body: some View {
         NavigationStack {
@@ -67,6 +68,18 @@ struct RecordView: View {
                     .padding()
                     .transition(.scale.combined(with: .opacity))
                 }
+                // 拍照记鱼主入口（健哥11-20令：拍照→自动识别候选→确认→点亮）
+                Button {
+                    showingPhotoCatch = true
+                } label: {
+                    Label("拍照记鱼", systemImage: "camera.fill")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(.teal)
+                        .foregroundStyle(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
                 SpeciesPicker(picked: $pickedSpecies)
                 // 安全层（免费全量）+ 习性摘要：选中即显示
                 if let info = Store.info(for: pickedSpecies) {
@@ -95,7 +108,7 @@ struct RecordView: View {
                     showNewbieCard = false
                     UserDefaults.standard.set(true, forKey: "rv.onboarded")
                 } label: {
-                    Label("记下这条鱼", systemImage: "checkmark.circle.fill")
+                    Label("没拍到？手动记一条", systemImage: "checkmark.circle")
                         .font(.headline)
                         .frame(maxWidth: .infinity)
                         .padding()
@@ -135,6 +148,9 @@ struct RecordView: View {
             }
             .padding()
             .navigationTitle("渔获")
+            .sheet(isPresented: $showingPhotoCatch) {
+                CatchPhotoView().environmentObject(store).environmentObject(weather)
+            }
         }
     }
 
@@ -265,6 +281,16 @@ struct CollectionView: View {
                 }
             }
             .navigationTitle("图鉴")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink {
+                        FeedbackView()
+                    } label: {
+                        Image(systemName: "envelope")
+                    }
+                    .accessibilityLabel("反馈")
+                }
+            }
         }
     }
 
@@ -343,10 +369,11 @@ struct SpeciesDetail: View {
 }
 
 // Tab3 钓点：工房轻量版（用户判断记录——App只存不评，产品宪法）
+// 健哥11-20令修卡死：表单常驻页底+键盘弹起会把Tab栏顶没→整页卡死。
+// 改法=表单收进toolbar"+"的sheet（自带下拉关闭，键盘只顶sheet内部），列表常驻。
 struct SpotsView: View {
     @EnvironmentObject var store: Store
-    @State private var newName = ""
-    @State private var newWhy = ""
+    @State private var showingNewSpot = false
     var body: some View {
         NavigationStack {
             Group {
@@ -362,39 +389,211 @@ struct SpotsView: View {
                 } else {
                     List {
                         ForEach(store.spots, id: \.id) { s in
-                            VStack(alignment: .leading) {
-                                Text(s.name).bold()
-                                if let why = s.whyChosen { Text(why).font(.caption).foregroundStyle(.secondary) }
-                                Text("📍 位置：未记录（默认关）").font(.caption2).foregroundStyle(.secondary)
+                            NavigationLink {
+                                SpotDetailView(spot: s)
+                            } label: {
+                                VStack(alignment: .leading) {
+                                    Text(s.name).bold()
+                                    if let why = s.whyChosen { Text(why).font(.caption).foregroundStyle(.secondary) }
+                                    Text(s.hasLocation ? "📍 位置已记录" : "📍 位置：未记录（默认关）")
+                                        .font(.caption2).foregroundStyle(.secondary)
+                                }
                             }
                         }
                     }
                 }
-                newSpotForm
             }
             .navigationTitle("钓点")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showingNewSpot = true
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                    .accessibilityLabel("记下这个点")
+                }
+            }
+            .sheet(isPresented: $showingNewSpot) {
+                NewSpotSheet()
+            }
+        }
+    }
+}
+
+// 新钓点表单（sheet 形态——键盘弹起只影响 sheet 内部，主页面与Tab栏永不被顶）
+// 健哥11-20令：加可选定位（宪法①默认关——用户点"记下位置"才拉一次坐标，存本地不上传）
+struct NewSpotSheet: View {
+    @EnvironmentObject var store: Store
+    @Environment(\.dismiss) private var dismiss
+    @State private var newName = ""
+    @State private var newWhy = ""
+    @State private var lat: Double?
+    @State private var lon: Double?
+    @State private var locating = false
+    @StateObject private var locator = SpotLocator()
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("钓点名（自己起，如：东边那个湾）", text: $newName)
+                    TextField("为什么选这里（可选：结构/水温/季节…你的判断）", text: $newWhy, axis: .vertical)
+                        .lineLimit(2...4)
+                    // 可选定位：不自动拉，点了才拉（隐私宪法：位置默认关）
+                    Button {
+                        if lat != nil {
+                            lat = nil; lon = nil
+                        } else {
+                            locating = true
+                            locator.once { c in
+                                lat = c?.latitude
+                                lon = c?.longitude
+                                locating = false
+                            }
+                        }
+                    } label: {
+                        HStack {
+                            if locating {
+                                ProgressView().padding(.trailing, 4)
+                                Text("定位中…")
+                            } else if lat != nil {
+                                Label("位置已记录（点此清除）", systemImage: "location.fill")
+                                    .foregroundStyle(.teal)
+                            } else {
+                                Label("记下位置（可选，仅存本机）", systemImage: "location")
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                } footer: {
+                    Text("只有你知道的地方——永不上传、永不众包。位置只存本机，用于日后回看这个点的渔获规律。打字可点键盘上的🎙麦克风按钮用语音输入。")
+                }
+                Section {
+                    Button {
+                        guard !newName.isEmpty else { return }
+                        store.spots.append(SpotNote(name: newName, whyChosen: newWhy.isEmpty ? nil : newWhy, lat: lat, lon: lon))
+                        dismiss()
+                    } label: {
+                        Label("记下这个点", systemImage: "mappin.and.ellipse")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.teal)
+                    .disabled(newName.isEmpty)
+                }
+            }
+            .navigationTitle("新钓点")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") { dismiss() }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+}
+
+// 一次性定位器（按需拉一次坐标，不常驻——隐私宪法）
+import CoreLocation
+final class SpotLocator: NSObject, ObservableObject, CLLocationManagerDelegate {
+    private let mgr = CLLocationManager()
+    private var callback: ((CLLocationCoordinate2D?) -> Void)?
+
+    override init() {
+        super.init()
+        mgr.delegate = self
+    }
+
+    func once(_ cb: @escaping (CLLocationCoordinate2D?) -> Void) {
+        callback = cb
+        switch mgr.authorizationStatus {
+        case .notDetermined:
+            mgr.requestWhenInUseAuthorization()
+        case .denied, .restricted:
+            cb(nil) // 被拒=诚实返回无坐标，不纠缠
+        default:
+            mgr.requestLocation()
+        }
+        // 10 秒兜底：授权弹窗悬着/定位超时都别把用户卡死
+        DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in
+            self?.callback = nil
         }
     }
 
-    private var newSpotForm: some View {
-        VStack(spacing: 8) {
-            TextField("钓点名（自己起，如：东边那个湾）", text: $newName)
-                .textFieldStyle(.roundedBorder)
-            TextField("为什么选这里（可选：结构/水温/季节…你的判断）", text: $newWhy, axis: .vertical)
-                .textFieldStyle(.roundedBorder)
-                .lineLimit(2...4)
-            Button {
-                guard !newName.isEmpty else { return }
-                store.spots.append(SpotNote(name: newName, whyChosen: newWhy.isEmpty ? nil : newWhy))
-                newName = ""; newWhy = ""
-            } label: {
-                Label("记下这个点", systemImage: "mappin.and.ellipse")
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 6)
-            }
-            .buttonStyle(.borderedProminent)
-            .disabled(newName.isEmpty)
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        if manager.authorizationStatus == .authorizedWhenInUse || manager.authorizationStatus == .authorizedAlways {
+            manager.requestLocation()
         }
-        .padding()
+    }
+
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        callback?(locations.first?.coordinate)
+        callback = nil
+    }
+
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        callback?(nil)
+        callback = nil
+    }
+}
+
+// 钓点详情：该点的渔获统计（健哥11-20令——哪个点钓过什么鱼/几月多，数据底座）
+struct SpotDetailView: View {
+    @EnvironmentObject var store: Store
+    let spot: SpotNote
+
+    // 本钓点的全部渔获（CatchRecord.spotID 关联）
+    private var spotCatches: [CatchRecord] {
+        store.catches.filter { $0.spotID == spot.id }
+    }
+    // 鱼种→条数（概率底座："这湾全年12条鲈鱼"）
+    private var speciesCounts: [(name: String, zh: String, count: Int)] {
+        let grouped = Dictionary(grouping: spotCatches, by: \.speciesName)
+            .mapValues { $0.count }
+        return grouped
+            .map { (name: $0.key, zh: Store.info(for: $0.key)?.nameZh ?? $0.key, count: $0.value) }
+            .sorted { $0.count > $1.count }
+    }
+
+    var body: some View {
+        List {
+            if let why = spot.whyChosen {
+                Section("你的判断") { Text(why).font(.subheadline) }
+            }
+            Section("渔获统计（\(spotCatches.count) 条）") {
+                if speciesCounts.isEmpty {
+                    Text("在这个点还没记过鱼——记鱼时选钓点即可自动归档到这里")
+                        .font(.caption).foregroundStyle(.secondary)
+                } else {
+                    ForEach(speciesCounts, id: \.name) { s in
+                        HStack {
+                            Text(s.zh)
+                            Spacer()
+                            Text("\(s.count) 条").foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+            Section("季节分布") {
+                if spotCatches.isEmpty {
+                    Text("暂无数据").font(.caption).foregroundStyle(.secondary)
+                } else {
+                    let byMonth = Dictionary(grouping: spotCatches) { Calendar.current.component(.month, from: $0.date) }
+                        .mapValues { $0.count }
+                        .sorted { $0.key < $1.key }
+                    ForEach(byMonth, id: \.key) { m in
+                        HStack {
+                            Text("\(m.key) 月")
+                            Spacer()
+                            Text("\(m.value) 条").foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+        }
+        .navigationTitle(spot.name)
+        .navigationBarTitleDisplayMode(.inline)
     }
 }

@@ -31,12 +31,14 @@ targets:
         ITSAppUsesNonExemptEncryption: false
         NSCameraUsageDescription: ReelVault uses the camera to photograph your catches for species identification and your collection.
         NSLocationWhenInUseUsageDescription: ReelVault can attach a fishing spot to your catch. Location is off by default and never shared.
+        NSPhotoLibraryAddUsageDescription: ReelVault can save your catch photos to your photo library if you choose.
+        NSSpeechRecognitionUsageDescription: ReelVault supports voice dictation so you can note spots hands-free.
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.zeronelabs.reelvault
         TARGETED_DEVICE_FAMILY: "1"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        MARKETING_VERSION: "0.1.0"
+        MARKETING_VERSION: "0.2.0"
         CURRENT_PROJECT_VERSION: "1"
 
 schemes:

@@ -16,6 +16,8 @@ struct CatchRecord: Codable, Identifiable {
     var weather: WeatherSnapshot? = nil   // S6.5：自动天气快照（开了才记，没有=nil）
     var methodSource: String? = nil       // 🔴v2奖学金埋钩
     var tripID: UUID? = nil               // 🔴v1.5航迹埋钩
+    var spotID: UUID? = nil               // 健哥11-20令：这条鱼在哪个钓点钓的（钓点鱼种分析底座）
+    var photoData: Data? = nil            // 健哥11-20令：渔获照片（拍照识别闭环）
 
     init(speciesName: String, identifiedByAI: Bool, weather: WeatherSnapshot? = nil) {
         self.id = UUID()
@@ -27,6 +29,8 @@ struct CatchRecord: Codable, Identifiable {
         self.weather = weather
         self.methodSource = nil
         self.tripID = nil
+        self.spotID = nil
+        self.photoData = nil
     }
 }
 
@@ -44,13 +48,19 @@ struct SpotNote: Codable, Identifiable {
     let name: String
     var whyChosen: String?
     let createdAt: Date
+    var lat: Double? = nil               // 健哥11-20令：钓点定位（用户在记点时主动开启才记，宪法①默认关）
+    var lon: Double? = nil
 
-    init(name: String, whyChosen: String? = nil) {
+    init(name: String, whyChosen: String? = nil, lat: Double? = nil, lon: Double? = nil) {
         self.id = UUID()
         self.name = name
         self.whyChosen = whyChosen
         self.createdAt = Date()
+        self.lat = lat
+        self.lon = lon
     }
+
+    var hasLocation: Bool { lat != nil && lon != nil }
 }
 
 final class Store: ObservableObject {
@@ -93,11 +103,13 @@ final class Store: ObservableObject {
 
     var litSpecies: Set<String> { Set(collection.map(\.speciesName)) }
 
-    func logCatch(speciesName: String, identifiedByAI: Bool, released: Bool = true, lengthCm: Double? = nil, weather: WeatherSnapshot? = nil) {
+    func logCatch(speciesName: String, identifiedByAI: Bool, released: Bool = true, lengthCm: Double? = nil, weather: WeatherSnapshot? = nil, spotID: UUID? = nil, photoData: Data? = nil) {
         let record = CatchRecord(speciesName: speciesName, identifiedByAI: identifiedByAI, weather: weather)
         var r = record
         r.released = released
         r.lengthCm = lengthCm
+        r.spotID = spotID
+        r.photoData = photoData
         catches.append(r)
         if let idx = collection.firstIndex(where: { $0.speciesName == speciesName }) {
             collection[idx].timesCaught += 1
