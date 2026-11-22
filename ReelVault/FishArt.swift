@@ -117,14 +117,9 @@ struct FishBodyStandard: Shape {
         p.addCurve(to: CGPoint(x: w * 0.08, y: cy),
                    control1: CGPoint(x: w * 0.40, y: cy + h * 0.32),
                    control2: CGPoint(x: w * 0.22, y: cy + h * 0.34))   // 腹
-        let fin = { () -> Path in                                       // 背鳍
-            var f = Path()
-            f.move(to: CGPoint(x: w * 0.38, y: cy - h * 0.28))
-            f.addLine(to: CGPoint(x: w * 0.48, y: cy - h * 0.44))
-            f.addLine(to: CGPoint(x: w * 0.56, y: cy - h * 0.28))
-            return f
-        }()
-        p.append(fin)
+        p.move(to: CGPoint(x: w * 0.38, y: cy - h * 0.28))               // 背鳍（新子路径：move即起笔）
+        p.addLine(to: CGPoint(x: w * 0.48, y: cy - h * 0.44))
+        p.addLine(to: CGPoint(x: w * 0.56, y: cy - h * 0.28))
         return p
     }
 }
@@ -152,15 +147,10 @@ struct FishBodyRound: Shape {
         var p = Path()
         let w = rect.width, h = rect.height, cy = rect.midY
         p.addEllipse(in: CGRect(x: w * 0.10, y: cy - h * 0.32, width: w * 0.62, height: h * 0.64))
-        let tail = { () -> Path in   // 小扇尾
-            var t = Path()
-            t.move(to: CGPoint(x: w * 0.72, y: cy - h * 0.10))
-            t.addLine(to: CGPoint(x: w * 0.92, y: cy - h * 0.24))
-            t.addLine(to: CGPoint(x: w * 0.92, y: cy + h * 0.24))
-            t.addLine(to: CGPoint(x: w * 0.72, y: cy + h * 0.10))
-            return t
-        }()
-        p.append(tail)
+        p.move(to: CGPoint(x: w * 0.72, y: cy - h * 0.10))               // 小扇尾（move起笔）
+        p.addLine(to: CGPoint(x: w * 0.92, y: cy - h * 0.24))
+        p.addLine(to: CGPoint(x: w * 0.92, y: cy + h * 0.24))
+        p.addLine(to: CGPoint(x: w * 0.72, y: cy + h * 0.10))
         return p
     }
 }
@@ -170,14 +160,9 @@ struct FishBodyFlat: Shape {
         var p = Path()
         let w = rect.width, h = rect.height, cy = rect.midY
         p.addEllipse(in: CGRect(x: w * 0.08, y: cy - h * 0.38, width: w * 0.70, height: h * 0.76))
-        let tail = { () -> Path in
-            var t = Path()
-            t.move(to: CGPoint(x: w * 0.78, y: cy))
-            t.addLine(to: CGPoint(x: w * 0.95, y: cy - h * 0.18))
-            t.addLine(to: CGPoint(x: w * 0.95, y: cy + h * 0.18))
-            return t
-        }()
-        p.append(tail)
+        p.move(to: CGPoint(x: w * 0.78, y: cy))                          // 尾（move起笔）
+        p.addLine(to: CGPoint(x: w * 0.95, y: cy - h * 0.18))
+        p.addLine(to: CGPoint(x: w * 0.95, y: cy + h * 0.18))
         return p
     }
 }
