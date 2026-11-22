@@ -20,7 +20,7 @@ struct SpotsMapView: View {
     var body: some View {
         NavigationStack {
             ZStack(alignment: .bottom) {
-                Map(initialPosition: .automatic) {
+                Map {
                     ForEach(pinnedSpots, id: \.spot.id) { item in
                         if let lat = item.spot.lat, let lon = item.spot.lon {
                             Annotation(item.spot.name, coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon)) {
@@ -42,7 +42,6 @@ struct SpotsMapView: View {
                         }
                     }
                 }
-                .mapStyle(.standard)
                 .ignoresSafeArea(edges: .bottom)
 
                 if pinnedSpots.isEmpty {
