@@ -2,6 +2,7 @@
 // v0.1→v0.2：①记录页接自动天气（可选授权）②选种器支持搜索（50种不下拉硬翻）
 // ③图鉴卡片详情页（习性/季节/饵/PB 实用页）④点亮行带天气小字
 import SwiftUI
+import MapKit
 
 struct ContentView: View {
     @StateObject private var weather = WeatherService.shared
@@ -14,6 +15,8 @@ struct ContentView: View {
                 .tabItem { Label("图鉴", systemImage: "square.grid.2x2.fill") }
             SpotsView()
                 .tabItem { Label("钓点", systemImage: "mappin.and.ellipse") }
+            LegacyView()
+                .tabItem { Label("传承", systemImage: "arrow.triangle.branch") }
         }
         .environmentObject(weather)
     }
@@ -25,6 +28,7 @@ struct RecordView: View {
     @EnvironmentObject var weather: WeatherService
     @State private var pickedSpecies: String = ""
     @State private var justCaught: String?
+    @State private var burstRarity: String = "common"
     @State private var showNewbieCard: Bool = !UserDefaults.standard.bool(forKey: "rv.onboarded")
     @State private var showingPhotoCatch = false
 
@@ -55,18 +59,8 @@ struct RecordView: View {
                     }
                 }
                 if let flash = justCaught {
-                    // 图鉴点亮反馈（收集欲的情绪出口；v1 换卡片翻转+稀有度光效动画）
-                    VStack(spacing: 8) {
-                        Image(systemName: "sparkles")
-                            .font(.system(size: 40))
-                            .foregroundStyle(.teal)
-                        Text("点亮：\(flash)")
-                            .font(.title3.bold())
-                        Text("已加入你的图鉴")
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding()
-                    .transition(.scale.combined(with: .opacity))
+                    // 健哥11-22令3：新品种震撼级动画（收集游戏的全屏庆祝）
+                    NewSpeciesBurst(speciesZh: flash, rarity: burstRarity)
                 }
                 // 拍照记鱼主入口（健哥11-20令：拍照→自动识别候选→确认→点亮）
                 Button {
@@ -100,8 +94,9 @@ struct RecordView: View {
                                    weather: weather.autoWeatherEnabled ? weather.last : nil)
                     if isNew {
                         justCaught = zh
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
-                            withAnimation { justCaught = nil }
+                        burstRarity = Store.info(for: pickedSpecies)?.rarity ?? "common"
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.6) {
+                            withAnimation(.easeOut(duration: 0.4)) { justCaught = nil }
                         }
                     }
                     pickedSpecies = ""
@@ -259,9 +254,28 @@ struct CollectionView: View {
             ScrollView {
                 let p = store.collectionProgress
                 VStack(spacing: 12) {
-                    Text("\(p.lit) / \(p.total) 已点亮")
-                        .font(.headline)
+                    // 健哥11-22令4：游戏风进度（大数字+百分比+收集率称号）
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text("\(p.lit)")
+                            .font(.system(size: 44, weight: .black, design: .rounded))
+                            .foregroundStyle(Color.teal)
+                            .shadow(color: .teal.opacity(0.4), radius: 6)
+                        Text("/ \(p.total)")
+                            .font(.title3.weight(.bold))
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        VStack(alignment: .trailing) {
+                            Text(collectorTitle(p.lit, total: p.total))
+                                .font(.headline)
+                                .foregroundStyle(.teal)
+                            Text(String(format: "%.0f%%", Double(p.lit) / Double(max(p.total, 1)) * 100))
+                                .font(.caption.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding(.horizontal)
                     ProgressView(value: Double(p.lit), total: Double(p.total))
+                        .tint(.teal)
                         .padding(.horizontal)
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 100))], spacing: 12) {
                         ForEach(SpeciesDatabase.seed, id: \.name) { s in
@@ -297,21 +311,56 @@ struct CollectionView: View {
     @ViewBuilder
     private func speciesCell(_ s: SpeciesInfo, lit: Bool) -> some View {
         VStack(spacing: 6) {
-            Image(systemName: lit ? "fish.fill" : "fish")
-                .font(.system(size: 34))
-                .foregroundStyle(lit ? rarityColor(s.rarity) : Color.gray.opacity(0.4))
+            // 健哥11-22令2/4：差异化鱼图案（50种视觉可辨）+游戏风卡片
+            FishArt(species: s, lit: lit, size: 54)
             Text(lit ? s.nameZh : "???")
-                .font(.caption)
+                .font(.caption.weight(lit ? .semibold : .regular))
                 .foregroundStyle(lit ? .primary : .secondary)
+            if lit {
+                Text(s.rarity == "legendary" ? "★ 传奇" : s.rarity == "rare" ? "★★ 稀有" : "常见")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(rarityColor(s.rarity))
+            }
         }
-        .padding(8)
-        .frame(maxWidth: .infinity)
-        .background((lit ? Color.teal.opacity(0.12) : Color.gray.opacity(0.08)))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .padding(10)
+        .frame(maxWidth: .infinity, minHeight: 120)
+        .background(
+            ZStack {
+                // 深海渐变底（游戏风）
+                LinearGradient(colors: lit ? [Color(red: 0.06, green: 0.20, blue: 0.28), Color(red: 0.10, green: 0.30, blue: 0.38)] : [Color.gray.opacity(0.10), Color.gray.opacity(0.06)],
+                               startPoint: .top, endPoint: .bottom)
+                if lit && s.rarity == "legendary" {
+                    // 传奇金边
+                    RoundedRectangle(cornerRadius: 14)
+                        .strokeBorder(LinearGradient(colors: [.yellow, .orange, .yellow], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1.5)
+                }
+            }
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .overlay(
+            lit ? RoundedRectangle(cornerRadius: 14)
+                .strokeBorder(rarityColor(s.rarity).opacity(s.rarity == "common" ? 0.25 : 0.7), lineWidth: 1)
+                : nil
+        )
+        .shadow(color: lit && s.rarity != "common" ? rarityColor(s.rarity).opacity(0.35) : .clear, radius: 4, y: 2)
     }
 
     func rarityColor(_ r: String) -> Color {
         switch r { case "legendary": return .purple; case "rare": return .blue; default: return .teal }
+    }
+
+    // 收集率称号（游戏风：段位制）
+    func collectorTitle(_ lit: Int, total: Int) -> String {
+        let pct = Double(lit) / Double(max(total, 1))
+        switch pct {
+        case 1.0: return "图鉴大师"
+        case 0.8...: return "传奇钓手"
+        case 0.6...: return "资深钓手"
+        case 0.4...: return "进阶钓手"
+        case 0.2...: return "新手钓手"
+        case 0.05...: return "初出茅庐"
+        default: return "第一次抛竿"
+        }
     }
 }
 
@@ -374,6 +423,8 @@ struct SpeciesDetail: View {
 struct SpotsView: View {
     @EnvironmentObject var store: Store
     @State private var showingNewSpot = false
+    // 健哥11-22令5：列表↔地图双视图
+    @State private var showMap = false
     var body: some View {
         NavigationStack {
             Group {
@@ -405,6 +456,14 @@ struct SpotsView: View {
             }
             .navigationTitle("钓点")
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    // 健哥11-22令5：列表/地图切换
+                    Button {
+                        withAnimation { showMap.toggle() }
+                    } label: {
+                        Image(systemName: showMap ? "list.bullet" : "map")
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         showingNewSpot = true
@@ -413,6 +472,11 @@ struct SpotsView: View {
                     }
                     .accessibilityLabel("记下这个点")
                 }
+            }
+            // 地图视图（有定位的钓点标注）
+            .sheet(isPresented: $showMap) {
+                SpotsMapView()
+                    .environmentObject(store)
             }
             .sheet(isPresented: $showingNewSpot) {
                 NewSpotSheet()
@@ -559,6 +623,28 @@ struct SpotDetailView: View {
 
     var body: some View {
         List {
+            // 健哥11-22令1：位置展示+一键跳本机导航
+            if spot.hasLocation, let lat = spot.lat, let lon = spot.lon {
+                Section("位置") {
+                    HStack {
+                        Image(systemName: "mappin.and.ellipse").foregroundStyle(.teal)
+                        Text(String(format: "%.5f, %.5f", lat, lon))
+                            .font(.subheadline.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
+                    Button {
+                        // 跳 Apple Maps 导航（本机原生；高德/Google 装了也会出现在分享目标）
+                        if let url = URL(string: "maps://?daddr=\(lat),\(lon)&dirflg=d") {
+                            UIApplication.shared.open(url)
+                        }
+                    } label: {
+                        Label("导航去这个钓点", systemImage: "location.north.circle.fill")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.teal)
+                }
+            }
             if let why = spot.whyChosen {
                 Section("你的判断") { Text(why).font(.subheadline) }
             }
