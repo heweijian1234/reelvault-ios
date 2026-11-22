@@ -5,6 +5,7 @@ import SwiftUI
 
 struct NewSpeciesBurst: View {
     let speciesZh: String
+    let speciesEn: String   // 实拍图资源名
     let rarity: String
     @State private var phase = 0   // 0冲击 1登场 2横幅
 
@@ -25,23 +26,54 @@ struct NewSpeciesBurst: View {
                 .stroke(accent.opacity(0.4), lineWidth: 1.5)
                 .frame(width: phase >= 2 ? 400 : 60)
 
-            // 中央鱼卡（缩放+旋转登场）
-            VStack(spacing: 10) {
-                Image(systemName: "fish.fill")
-                    .font(.system(size: 72, weight: .bold))
-                    .foregroundStyle(
-                        LinearGradient(colors: [accent, .white], startPoint: .top, endPoint: .bottom)
-                    )
-                    .shadow(color: accent, radius: 12)
-                    .rotation3DEffect(.degrees(phase >= 1 ? 0 : 40), axis: (x: 0.3, y: 1, z: 0))
+            // 中央鱼卡（实拍图+缩放旋转登场+金光扫过）
+            VStack(spacing: 12) {
+                ZStack {
+                    // 稀有度光轮（旋转）
+                    Circle()
+                        .stroke(AngularGradient(colors: [accent, .yellow, accent, .yellow], center: .center), lineWidth: 3)
+                        .frame(width: 200, height: 200)
+                        .rotationEffect(.degrees(Double(phase) * 90))
+                        .opacity(phase >= 1 ? 0.8 : 0)
+                    // 实拍鱼图卡
+                    if let photo = UIImage(named: speciesEn) {
+                        Image(uiImage: photo)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 170, height: 120)
+                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .strokeBorder(LinearGradient(colors: [accent, .yellow, accent], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 2.5)
+                            )
+                            .shadow(color: accent.opacity(0.8), radius: 14)
+                            .rotation3DEffect(.degrees(phase >= 1 ? 0 : 50), axis: (x: 0.2, y: 1, z: 0.1))
+                    } else {
+                        Image(systemName: "fish.fill")
+                            .font(.system(size: 72, weight: .bold))
+                            .foregroundStyle(LinearGradient(colors: [accent, .white], startPoint: .top, endPoint: .bottom))
+                            .shadow(color: accent, radius: 12)
+                            .rotation3DEffect(.degrees(phase >= 1 ? 0 : 40), axis: (x: 0.3, y: 1, z: 0))
+                    }
+                    // 金光扫过（phase1后一道高光划过鱼卡）
+                    if phase >= 1 {
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(LinearGradient(colors: [.clear, .white.opacity(0.55), .clear], startPoint: .topLeading, endPoint: .bottomTrailing))
+                            .frame(width: 170, height: 120)
+                            .rotationEffect(.degrees(20))
+                            .offset(x: phase >= 2 ? 220 : -220)
+                            .animation(.easeIn(duration: 0.7).delay(0.3), value: phase)
+                    }
+                }
                 Text("点亮：\(speciesZh)")
-                    .font(.system(size: 22, weight: .black))
+                    .font(.system(size: 24, weight: .black))
                     .foregroundStyle(.white)
+                    .shadow(color: accent, radius: 6)
                 Text(rarityLabel)
                     .font(.headline)
                     .foregroundStyle(accent)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 5)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 6)
                     .background(Capsule().fill(accent.opacity(0.22)))
                     .overlay(Capsule().strokeBorder(accent.opacity(0.6)))
             }
@@ -49,8 +81,8 @@ struct NewSpeciesBurst: View {
             .shadow(color: .black.opacity(0.5), radius: 16)
 
             // 粒子火花（8向）
-            ForEach(0..<8, id: \.self) { i in
-                let angle = Double(i) / 8 * 2 * .pi
+            ForEach(0..<12, id: \.self) { i in
+                let angle = Double(i) / 12 * 2 * .pi
                 Image(systemName: "sparkle")
                     .font(.system(size: 14))
                     .foregroundStyle(accent)
@@ -71,6 +103,7 @@ struct NewSpeciesBurst: View {
             .ignoresSafeArea()
         )
         .onAppear {
+            UINotificationFeedbackGenerator().notificationOccurred(.success)   // 震感
             withAnimation(.spring(response: 0.4, dampingFraction: 0.55)) { phase = 1 }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 withAnimation(.easeOut(duration: 0.8)) { phase = 2 }

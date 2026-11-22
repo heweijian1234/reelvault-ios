@@ -29,6 +29,7 @@ struct RecordView: View {
     @State private var pickedSpecies: String = ""
     @State private var justCaught: String?
     @State private var burstRarity: String = "common"
+    @State private var burstSpeciesEn: String = ""
     @State private var showNewbieCard: Bool = !UserDefaults.standard.bool(forKey: "rv.onboarded")
     @State private var showingPhotoCatch = false
 
@@ -60,7 +61,7 @@ struct RecordView: View {
                 }
                 if let flash = justCaught {
                     // 健哥11-22令3：新品种震撼级动画（收集游戏的全屏庆祝）
-                    NewSpeciesBurst(speciesZh: flash, rarity: burstRarity)
+                    NewSpeciesBurst(speciesZh: flash, speciesEn: burstSpeciesEn, rarity: burstRarity)
                 }
                 // 拍照记鱼主入口（健哥11-20令：拍照→自动识别候选→确认→点亮）
                 Button {
@@ -94,6 +95,7 @@ struct RecordView: View {
                                    weather: weather.autoWeatherEnabled ? weather.last : nil)
                     if isNew {
                         justCaught = zh
+                        burstSpeciesEn = pickedSpecies
                         burstRarity = Store.info(for: pickedSpecies)?.rarity ?? "common"
                         DispatchQueue.main.asyncAfter(deadline: .now() + 2.6) {
                             withAnimation(.easeOut(duration: 0.4)) { justCaught = nil }
@@ -311,8 +313,19 @@ struct CollectionView: View {
     @ViewBuilder
     private func speciesCell(_ s: SpeciesInfo, lit: Bool) -> some View {
         VStack(spacing: 6) {
-            // 健哥11-22令2/4：差异化鱼图案（50种视觉可辨）+游戏风卡片
-            FishArt(species: s, lit: lit, size: 54)
+            // 健哥11-22晚令1：实拍图（Wikimedia Commons PD/CC）——未点亮显示剪影
+            if lit, let photo = UIImage(named: s.name) {
+                Image(uiImage: photo)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 76, height: 52)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(rarityColor(s.rarity).opacity(0.5), lineWidth: 1))
+            } else {
+                FishArt(species: s, lit: false, size: 50)
+                    .saturation(0)   // 剪影化
+                    .opacity(0.5)
+            }
             Text(lit ? s.nameZh : "???")
                 .font(.caption.weight(lit ? .semibold : .regular))
                 .foregroundStyle(lit ? .primary : .secondary)
@@ -372,9 +385,26 @@ struct SpeciesDetail: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
+                // 健哥11-22晚令1：详情页大实拍图
+                if let photo = UIImage(named: info.name) {
+                    Image(uiImage: photo)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 190)
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                        .overlay(alignment: .bottomTrailing) {
+                            Text("Wikimedia Commons")
+                                .font(.system(size: 8))
+                                .foregroundStyle(.white.opacity(0.7))
+                                .padding(4)
+                                .background(.black.opacity(0.35), in: Capsule())
+                                .padding(6)
+                        }
+                }
                 HStack(spacing: 12) {
                     Image(systemName: "fish.fill")
-                        .font(.system(size: 48))
+                        .font(.system(size: 32))
                         .foregroundStyle(rarityColor)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(info.nameZh).font(.title2.bold())
