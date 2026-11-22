@@ -35,7 +35,7 @@ struct NewSpeciesBurst: View {
                     .shadow(color: accent, radius: 12)
                     .rotation3DEffect(.degrees(phase >= 1 ? 0 : 40), axis: (x: 0.3, y: 1, z: 0))
                 Text("点亮：\(speciesZh)")
-                    .font(.title2.black())
+                    .font(.system(size: 22, weight: .black))
                     .foregroundStyle(.white)
                 Text(rarityLabel)
                     .font(.headline)

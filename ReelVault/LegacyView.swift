@@ -69,8 +69,8 @@ struct LegacyView: View {
             Label("你的钓史", systemImage: "book.closed.fill")
                 .font(.headline)
                 .foregroundStyle(.teal)
-            let byYear = Dictionary(grouping: store.catches) { Calendar.current.component(.year, from: $0.date) }
-                .sorted { $0.key > $1.key }
+            let grouped = Dictionary(grouping: store.catches) { Calendar.current.component(.year, from: $0.date) }
+            let byYear: [(key: Int, value: [CatchRecord])] = grouped.sorted { $0.key > $1.key }
             if byYear.isEmpty {
                 Text("还没有记录——第一条鱼从今天开始")
                     .font(.caption).foregroundStyle(.secondary)
@@ -80,7 +80,7 @@ struct LegacyView: View {
                 let bestSpot = bestSpotName(of: catches)
                 HStack {
                     Text(String(year))
-                        .font(.title3.black())
+                        .font(.system(size: 20, weight: .black))
                         .foregroundStyle(.teal)
                     VStack(alignment: .leading, spacing: 2) {
                         Text("\(catches.count) 条 · \(species) 种")
@@ -112,7 +112,7 @@ struct LegacyView: View {
             Label("传下去", systemImage: "arrow.triangle.branch")
                 .font(.headline)
                 .foregroundStyle(.teal)
-            Text(" someday，把这台手机里的图鉴打开给孩子看：")
+            Text("有一天，把这台手机里的图鉴打开给孩子看：")
                 .font(.subheadline)
                 .foregroundStyle(.white)
             Text("「这是爸爸钓过的每一条鱼，和每一个只有我们知道的地方。」")
@@ -134,7 +134,7 @@ struct LegacyView: View {
     private func legacyStat(icon: String, value: String, label: String) -> some View {
         VStack(spacing: 4) {
             Image(systemName: icon).foregroundStyle(.teal)
-            Text(value).font(.title3.black()).foregroundStyle(.white)
+            Text(value).font(.system(size: 20, weight: .black)).foregroundStyle(.white)
             Text(label).font(.caption2).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)

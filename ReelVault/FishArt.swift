@@ -60,13 +60,12 @@ struct FishArt: View {
         .frame(width: size * 1.2, height: size * 1.2)
     }
 
-    @ViewBuilder
-    private var fishShape: some Shape {
+    private var fishShape: AnyShape {
         switch bodyType {
-        case 0: FishBodySlender()   // 细长型（带鱼/凤尾）
-        case 1: FishBodyRound()     // 圆胖型（河豚/石斑）
-        case 2: FishBodyFlat()      // 扁平型（比目鱼/鳐）
-        default: FishBodyStandard() // 标准型
+        case 0: return AnyShape(FishBodySlender())   // 细长型（带鱼/凤尾）
+        case 1: return AnyShape(FishBodyRound())     // 圆胖型（河豚/石斑）
+        case 2: return AnyShape(FishBodyFlat())      // 扁平型（比目鱼/鳐）
+        default: return AnyShape(FishBodyStandard()) // 标准型
         }
     }
 
@@ -118,13 +117,14 @@ struct FishBodyStandard: Shape {
         p.addCurve(to: CGPoint(x: w * 0.08, y: cy),
                    control1: CGPoint(x: w * 0.40, y: cy + h * 0.32),
                    control2: CGPoint(x: w * 0.22, y: cy + h * 0.34))   // 腹
-        p.addSubpath({                                                  // 背鳍
+        let fin = { () -> Path in                                       // 背鳍
             var f = Path()
             f.move(to: CGPoint(x: w * 0.38, y: cy - h * 0.28))
             f.addLine(to: CGPoint(x: w * 0.48, y: cy - h * 0.44))
             f.addLine(to: CGPoint(x: w * 0.56, y: cy - h * 0.28))
             return f
-        }())
+        }()
+        p.append(fin)
         return p
     }
 }
@@ -152,14 +152,15 @@ struct FishBodyRound: Shape {
         var p = Path()
         let w = rect.width, h = rect.height, cy = rect.midY
         p.addEllipse(in: CGRect(x: w * 0.10, y: cy - h * 0.32, width: w * 0.62, height: h * 0.64))
-        p.addSubpath({
-            var t = Path()   // 小扇尾
+        let tail = { () -> Path in   // 小扇尾
+            var t = Path()
             t.move(to: CGPoint(x: w * 0.72, y: cy - h * 0.10))
             t.addLine(to: CGPoint(x: w * 0.92, y: cy - h * 0.24))
             t.addLine(to: CGPoint(x: w * 0.92, y: cy + h * 0.24))
             t.addLine(to: CGPoint(x: w * 0.72, y: cy + h * 0.10))
             return t
-        }())
+        }()
+        p.append(tail)
         return p
     }
 }
@@ -169,13 +170,14 @@ struct FishBodyFlat: Shape {
         var p = Path()
         let w = rect.width, h = rect.height, cy = rect.midY
         p.addEllipse(in: CGRect(x: w * 0.08, y: cy - h * 0.38, width: w * 0.70, height: h * 0.76))
-        p.addSubpath({
+        let tail = { () -> Path in
             var t = Path()
             t.move(to: CGPoint(x: w * 0.78, y: cy))
             t.addLine(to: CGPoint(x: w * 0.95, y: cy - h * 0.18))
             t.addLine(to: CGPoint(x: w * 0.95, y: cy + h * 0.18))
             return t
-        }())
+        }()
+        p.append(tail)
         return p
     }
 }
