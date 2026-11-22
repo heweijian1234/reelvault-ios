@@ -2,13 +2,13 @@ import SwiftUI
 import MapKit
 
 // MARK: - 钓点地图（健哥11-22令5：形象化——钓点标注+渔获数徽章）
+// iOS16 兼容：SwiftUI Map 的 content builder 是 iOS17 API——用 MKMapView 包装（全版本通吃）
 // 隐私宪法不变：只有用户主动记了位置的钓点才出现在地图上（没定位的留在列表页）
 
 struct SpotsMapView: View {
     @EnvironmentObject var store: Store
     @Environment(\.dismiss) private var dismiss
 
-    /// 有位置的钓点 → MapAnnotation
     private var pinnedSpots: [(spot: SpotNote, count: Int)] {
         store.spots.compactMap { s in
             guard s.hasLocation, let _ = s.lat, let _ = s.lon else { return nil }
@@ -20,29 +20,8 @@ struct SpotsMapView: View {
     var body: some View {
         NavigationStack {
             ZStack(alignment: .bottom) {
-                Map {
-                    ForEach(pinnedSpots, id: \.spot.id) { item in
-                        if let lat = item.spot.lat, let lon = item.spot.lon {
-                            Annotation(item.spot.name, coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon)) {
-                                // 自定义标注：钓点图钉+渔获数徽章
-                                ZStack {
-                                    Image(systemName: "mappin.circle.fill")
-                                        .font(.system(size: 34))
-                                        .foregroundStyle(.white, .teal)
-                                    if item.count > 0 {
-                                        Text("\(item.count)")
-                                            .font(.system(size: 10, weight: .bold))
-                                            .foregroundStyle(.white)
-                                            .padding(4)
-                                            .background(Circle().fill(.orange))
-                                            .offset(x: 14, y: -12)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                .ignoresSafeArea(edges: .bottom)
+                SpotsMKMapView(spots: pinnedSpots)
+                    .ignoresSafeArea(edges: .bottom)
 
                 if pinnedSpots.isEmpty {
                     VStack(spacing: 10) {
@@ -75,5 +54,70 @@ struct SpotsMapView: View {
                 }
             }
         }
+    }
+}
+
+/// MKMapView 包装（iOS16 兼容）
+struct SpotsMKMapView: UIViewRepresentable {
+    let spots: [(spot: SpotNote, count: Int)]
+
+    func makeUIView(context: Context) -> MKMapView {
+        let map = MKMapView()
+        map.delegate = context.coordinator
+        return map
+    }
+
+    func updateUIView(_ map: MKMapView, context: Context) {
+        map.removeAnnotations(map.annotations)
+        var rects: [MKMapRect] = []
+        for item in spots {
+            guard let lat = item.spot.lat, let lon = item.spot.lon else { continue }
+            let anno = SpotAnnotation(coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon),
+                                      title: item.spot.name,
+                                      subtitle: item.count > 0 ? "\(item.count) 条渔获" : nil,
+                                      count: item.count)
+            map.addAnnotation(anno)
+            let p = MKMapPoint(anno.coordinate)
+            rects.append(MKMapRect(x: p.x - 5000, y: p.y - 5000, width: 10000, height: 10000))
+        }
+        if !rects.isEmpty {
+            var fit = rects[0]
+            for r in rects.dropFirst() { fit = fit.union(r) }
+            map.setVisibleMapRect(fit, edgePadding: UIEdgeInsets(top: 60, left: 40, bottom: 60, right: 40), animated: false)
+        }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+    final class Coordinator: NSObject, MKMapViewDelegate {
+        func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+            guard let spot = annotation as? SpotAnnotation else { return nil }
+            let id = "spotPin"
+            let view = (mapView.dequeueReusableAnnotationView(withIdentifier: id) as? MKMarkerAnnotationView) ?? MKMarkerAnnotationView(annotation: spot, reuseIdentifier: id)
+            view.canShowCallout = true
+            view.markerTintColor = .systemTeal
+            view.glyphImage = UIImage(systemName: "fish")
+            // 渔获数徽章（右附件）
+            if spot.count > 0 {
+                let label = UILabel()
+                label.text = " 🐟\(spot.count)"
+                label.font = .systemFont(ofSize: 12, weight: .bold)
+                label.textColor = .systemOrange
+                view.rightCalloutAccessoryView = label
+            }
+            return view
+        }
+    }
+}
+
+final class SpotAnnotation: NSObject, MKAnnotation {
+    let coordinate: CLLocationCoordinate2D
+    let title: String?
+    let subtitle: String?
+    let count: Int
+    init(coordinate: CLLocationCoordinate2D, title: String, subtitle: String?, count: Int) {
+        self.coordinate = coordinate
+        self.title = title
+        self.subtitle = subtitle
+        self.count = count
     }
 }
