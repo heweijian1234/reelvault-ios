@@ -25,6 +25,12 @@ struct LegacyView: View {
                         Image(systemName: "envelope")
                     }
                 }
+                ToolbarItem(placement: .topBarLeading) {
+                    NavigationLink { PhotoCreditsView() } label: {
+                        Image(systemName: "checkmark.seal")
+                    }
+                    .accessibilityLabel("照片来源与许可")
+                }
             }
         }
     }

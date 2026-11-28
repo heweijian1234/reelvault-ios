@@ -6,19 +6,44 @@ import MapKit
 
 struct ContentView: View {
     @StateObject private var weather = WeatherService.shared
+    @State private var tab = 0
 
     var body: some View {
-        TabView {
-            RecordView()
-                .tabItem { Label("记录", systemImage: "camera.fill") }
-            CollectionView()
-                .tabItem { Label("图鉴", systemImage: "square.grid.2x2.fill") }
-            SpotsView()
-                .tabItem { Label("钓点", systemImage: "mappin.and.ellipse") }
-            LegacyView()
-                .tabItem { Label("传承", systemImage: "arrow.triangle.branch") }
+        // 🔴S7.9 标配（2026-11-28 健哥令）：左右滑切换页面——.page 翻页样式+自绘底部导航条（NotaryTrack f88d42d 范本）
+        VStack(spacing: 0) {
+            TabView(selection: $tab) {
+                RecordView().tag(0)
+                CollectionView().tag(1)
+                SpotsView().tag(2)
+                LegacyView().tag(3)
+            }
+            .tabViewStyle(.page(indexDisplayMode: .never))
+
+            HStack(spacing: 0) {
+                tabBarButton(icon: "camera.fill", label: "记录", idx: 0)
+                tabBarButton(icon: "square.grid.2x2.fill", label: "图鉴", idx: 1)
+                tabBarButton(icon: "mappin.and.ellipse", label: "钓点", idx: 2)
+                tabBarButton(icon: "arrow.triangle.branch", label: "传承", idx: 3)
+            }
+            .padding(.top, 6)
+            .padding(.bottom, 2)
+            .background(.bar)
         }
         .environmentObject(weather)
+    }
+
+    /// 🔴S7.9 标配：自绘底部导航按钮（滑动切页配对件）
+    private func tabBarButton(icon: String, label: String, idx: Int) -> some View {
+        Button {
+            withAnimation { tab = idx }
+        } label: {
+            VStack(spacing: 2) {
+                Image(systemName: icon).font(.system(size: 20))
+                Text(label).font(.caption2)
+            }
+            .frame(maxWidth: .infinity)
+            .foregroundColor(tab == idx ? .blue : .secondary)
+        }
     }
 }
 
